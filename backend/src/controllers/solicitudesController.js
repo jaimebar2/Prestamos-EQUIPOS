@@ -50,25 +50,25 @@ const obtenerSolicitudes = async (req, res) => {
     let params;
 
     if (rol === "admin") {
-      query = `
+     query = `
         SELECT s.*, u.nombre AS usuario_nombre, u.correo AS usuario_correo,
-               e.nombre AS equipo_nombre, e.tipo AS equipo_tipo, e.imagen AS equipo_imagen
+         e.nombre AS equipo_nombre, e.tipo AS equipo_tipo, e.imagen AS equipo_imagen
         FROM solicitudes s
-        INNER JOIN usuarios u ON u.id = s.usuario_id
-        INNER JOIN equipos e ON e.id = s.equipo_id
+         INNER JOIN usuarios u ON u.id = s.usuario_id
+        LEFT JOIN equipos e ON e.id = s.equipo_id
         ORDER BY s.created_at DESC
-      `;
+`;
       params = [];
     } else {
       query = `
-        SELECT s.*, u.nombre AS usuario_nombre, u.correo AS usuario_correo,
-               e.nombre AS equipo_nombre, e.tipo AS equipo_tipo, e.imagen AS equipo_imagen
-        FROM solicitudes s
-        INNER JOIN usuarios u ON u.id = s.usuario_id
-        INNER JOIN equipos e ON e.id = s.equipo_id
-        WHERE s.usuario_id = $1
-        ORDER BY s.created_at DESC
-      `;
+  SELECT s.*, u.nombre AS usuario_nombre, u.correo AS usuario_correo,
+         e.nombre AS equipo_nombre, e.tipo AS equipo_tipo, e.imagen AS equipo_imagen
+  FROM solicitudes s
+  INNER JOIN usuarios u ON u.id = s.usuario_id
+  LEFT JOIN equipos e ON e.id = s.equipo_id
+  WHERE s.usuario_id = $1
+  ORDER BY s.created_at DESC
+`;
       params = [usuario_id];
     }
 
