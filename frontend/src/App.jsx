@@ -14,6 +14,7 @@ const C = {
 const fmtFecha = (iso) => iso ? new Date(iso).toLocaleDateString("es-CO") : "-";
 
 const Badge = ({ status }) => {
+  const key = status?.toLowerCase();
   const map = {
     disponible:    { bg: C.greenBg,  color: C.green,  label: "Disponible" },
     no_disponible: { bg: C.redBg,    color: C.red,    label: "No disponible" },
@@ -22,7 +23,7 @@ const Badge = ({ status }) => {
     rechazado:     { bg: C.redBg,    color: C.red,    label: "Rechazado" },
     devuelto:      { bg: C.blueBg,   color: C.blue,   label: "Devuelto" },
   };
-  const s = map[status] || { bg: C.gray100, color: C.gray600, label: status };
+  const s = map[key] || { bg: C.gray100, color: C.gray600, label: status };
   return (
     <span style={{ background: s.bg, color: s.color, padding: "4px 12px",
       borderRadius: 20, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>
@@ -118,12 +119,12 @@ function LoginPage({ onLogin }) {
 // ── Sidebar ────────────────────────────────────────────────
 function Sidebar({ page, setPage, logout, esAdmin }) {
   const links = [
-    { id: "dashboard",        label: "Inicio",           icon: "🏠" },
-    { id: "equipos",          label: "Equipos",          icon: "💻" },
-    { id: "mis-solicitudes",  label: "Mis solicitudes",  icon: "📋" },
+    { id: "dashboard",        label: "Inicio",          icon: "🏠" },
+    { id: "equipos",          label: "Equipos",         icon: "💻" },
+    { id: "mis-solicitudes",  label: "Mis solicitudes", icon: "📋" },
     ...(esAdmin ? [
-      { id: "admin",           label: "Panel Admin",      icon: "🛡️" },
-      { id: "gestion-equipos", label: "Gestión Equipos",  icon: "⚙️" },
+      { id: "admin",           label: "Panel Admin",     icon: "🛡️" },
+      { id: "gestion-equipos", label: "Gestión Equipos", icon: "⚙️" },
     ] : []),
   ];
   return (
@@ -170,8 +171,8 @@ const TopBar = ({ title, subtitle, usuario }) => (
 
 // ── Dashboard ──────────────────────────────────────────────
 function DashboardPage({ setPage, usuario, solicitudes }) {
-  const pendientes = solicitudes.filter((s) => s.estado === "pendiente").length;
-  const aprobadas  = solicitudes.filter((s) => s.estado === "aprobado").length;
+  const pendientes = solicitudes.filter((s) => s.estado?.toLowerCase() === "pendiente").length;
+  const aprobadas  = solicitudes.filter((s) => s.estado?.toLowerCase() === "aprobado").length;
   return (
     <div style={{ flex: 1, background: C.gray50 }}>
       <TopBar title={`Hola, ${usuario?.nombre?.split(" ")[0]} 👋`}
@@ -215,16 +216,12 @@ function EquiposPage({ usuario }) {
   const [enviando, setEnviando] = useState(false);
   const [mensaje,  setMensaje]  = useState("");
 
+  // BUG CORREGIDO: usaba getSolicitudes en lugar de getEquipos
   useEffect(() => {
-    const cargar = () => {
-      api.getSolicitudes()
-        .then((data) => setSolicitudes(Array.isArray(data) ? data : []))
-        .finally(() => setLoading(false));
-    };
-    cargar();
-    // Refresca automáticamente cada 15 segundos
-    const intervalo = setInterval(cargar, 15000);
-    return () => clearInterval(intervalo);
+    api.getEquipos()
+      .then((data) => setEquipos(Array.isArray(data) ? data : []))
+      .catch(() => setMensaje("Error al cargar equipos"))
+      .finally(() => setLoading(false));
   }, []);
 
   const enviarSolicitud = async () => {
@@ -232,8 +229,11 @@ function EquiposPage({ usuario }) {
     setEnviando(true); setMensaje("");
     try {
       const res = await api.crearSolicitud({ equipo_id: modal.id, ...form });
-      if (res.id) { setMensaje("✅ Solicitud enviada. El admin la revisará pronto."); setModal(null); setForm({ fecha_prestamo: "", fecha_devolucion: "", motivo: "" }); }
-      else setMensaje(res.mensaje || "Error al enviar solicitud");
+      if (res.id) {
+        setMensaje("✅ Solicitud enviada. El admin la revisará pronto.");
+        setModal(null);
+        setForm({ fecha_prestamo: "", fecha_devolucion: "", motivo: "" });
+      } else setMensaje(res.mensaje || "Error al enviar solicitud");
     } catch { setMensaje("Error de conexión"); }
     finally { setEnviando(false); }
   };
@@ -309,9 +309,15 @@ function SolicitudesPage({ usuario }) {
   const [loading,     setLoading]     = useState(true);
 
   useEffect(() => {
-    api.getSolicitudes()
-      .then((data) => setSolicitudes(Array.isArray(data) ? data : []))
-      .finally(() => setLoading(false));
+    const cargar = () => {
+      api.getSolicitudes()
+        .then((data) => setSolicitudes(Array.isArray(data) ? data : []))
+        .finally(() => setLoading(false));
+    };
+    cargar();
+    // Refresca cada 15 segundos para ver cambios del admin
+    const intervalo = setInterval(cargar, 15000);
+    return () => clearInterval(intervalo);
   }, []);
 
   if (loading) return <div style={{ padding: 40, color: C.gray600 }}>Cargando solicitudes…</div>;
@@ -347,7 +353,12 @@ function SolicitudesPage({ usuario }) {
                     <td style={{ padding: "14px 16px", fontSize: 13, color: C.gray600, maxWidth: 180 }}>{s.motivo || "-"}</td>
                     <td style={{ padding: "14px 16px" }}>
                       <Badge status={s.estado} />
-                      {s.nota_admin && <div style={{ fontSize: 11, color: C.gray600, marginTop: 4 }}>📝 {s.nota_admin}</div>}
+                      {s.nota_admin && (
+                        <div style={{ fontSize: 11, marginTop: 6, padding: "4px 8px",
+                          background: C.amberBg, color: C.amber, borderRadius: 6 }}>
+                          📌 {s.nota_admin}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -367,6 +378,9 @@ function AdminPage({ usuario }) {
   const [filtro,      setFiltro]      = useState("todos");
   const [nota,        setNota]        = useState({});
   const [procesando,  setProcesando]  = useState(null);
+  // BUG CORREGIDO: modal de rechazo para escribir motivo obligatorio
+  const [modalRechazo, setModalRechazo] = useState(null);
+  const [motivoRechazo, setMotivoRechazo] = useState("");
 
   const cargar = () => {
     setLoading(true);
@@ -377,15 +391,26 @@ function AdminPage({ usuario }) {
 
   useEffect(cargar, []);
 
-  const cambiarEstado = async (id, estado) => {
+  const cambiarEstado = async (id, estado, notaOverride) => {
     setProcesando(id + estado);
     try {
-      const res = await api.actualizarEstado(id, { estado, nota_admin: nota[id] || null });
-      if (res.id) cargar();
+      const res = await api.actualizarEstado(id, {
+        estado,
+        nota_admin: notaOverride ?? nota[id] ?? null
+      });
+      if (res.id) { cargar(); setModalRechazo(null); setMotivoRechazo(""); }
     } finally { setProcesando(null); }
   };
 
-  const filtradas = filtro === "todos" ? solicitudes : solicitudes.filter((s) => s.estado === filtro);
+  const abrirRechazo = (s) => {
+    setModalRechazo(s);
+    setMotivoRechazo("");
+  };
+
+  // BUG CORREGIDO: comparación con toLowerCase()
+  const filtradas = filtro === "todos"
+    ? solicitudes
+    : solicitudes.filter((s) => s.estado?.toLowerCase() === filtro);
 
   if (loading) return <div style={{ padding: 40, color: C.gray600 }}>Cargando…</div>;
 
@@ -404,12 +429,13 @@ function AdminPage({ usuario }) {
               {f !== "todos" && (
                 <span style={{ marginLeft: 6, background: "rgba(255,255,255,0.3)",
                   borderRadius: 10, padding: "1px 7px", fontSize: 11 }}>
-                  {solicitudes.filter((s) => s.estado === f).length}
+                  {solicitudes.filter((s) => s.estado?.toLowerCase() === f).length}
                 </span>
               )}
             </button>
           ))}
         </div>
+
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {filtradas.length === 0 && (
             <p style={{ textAlign: "center", color: C.gray400, padding: 32 }}>No hay solicitudes.</p>
@@ -428,37 +454,87 @@ function AdminPage({ usuario }) {
                 </div>
                 <Badge status={s.estado} />
               </div>
-              {s.estado === "pendiente" && (
+
+              {/* Botones para solicitudes PENDIENTES */}
+              {s.estado?.toLowerCase() === "pendiente" && (
                 <div style={{ borderTop: `1px solid ${C.gray200}`, paddingTop: 14 }}>
-                  <input placeholder="Nota para el usuario (opcional)"
+                  <input placeholder="Nota para el usuario al aprobar (opcional)"
                     value={nota[s.id] || ""}
                     onChange={(e) => setNota({ ...nota, [s.id]: e.target.value })}
                     style={{ width: "100%", padding: "8px 12px", borderRadius: 8,
                       border: `1px solid ${C.gray200}`, boxSizing: "border-box", fontSize: 13, marginBottom: 10 }} />
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                     <Btn onClick={() => cambiarEstado(s.id, "aprobado")}
-                      disabled={procesando === s.id + "aprobado"} color={C.green}>✅ Aprobar</Btn>
-                    <Btn onClick={() => cambiarEstado(s.id, "rechazado")}
-                      disabled={procesando === s.id + "rechazado"} color={C.red}>❌ Rechazar</Btn>
+                      disabled={procesando === s.id + "aprobado"} color={C.green}>
+                      ✅ Aprobar
+                    </Btn>
+                    <Btn onClick={() => abrirRechazo(s)}
+                      disabled={procesando === s.id + "rechazado"} color={C.red}>
+                      ❌ Rechazar
+                    </Btn>
                   </div>
                 </div>
               )}
-              {s.estado === "aprobado" && (
+
+              {/* Botón para solicitudes APROBADAS */}
+              {s.estado?.toLowerCase() === "aprobado" && (
                 <div style={{ borderTop: `1px solid ${C.gray200}`, paddingTop: 14 }}>
                   <Btn onClick={() => cambiarEstado(s.id, "devuelto")}
-                    disabled={procesando === s.id + "devuelto"} color={C.blue}>📦 Marcar como devuelto</Btn>
+                    disabled={procesando === s.id + "devuelto"} color={C.blue}>
+                    📦 Marcar como devuelto
+                  </Btn>
                 </div>
               )}
+
               {s.nota_admin && (
-                <div style={{ marginTop: 10, padding: "8px 12px", background: C.gray50,
-                  borderRadius: 8, fontSize: 13, color: C.gray600 }}>
-                  📌 Nota admin: {s.nota_admin}
+                <div style={{ marginTop: 10, padding: "8px 12px", background: C.amberBg,
+                  borderRadius: 8, fontSize: 13, color: C.amber, fontWeight: 600 }}>
+                  📌 Nota: {s.nota_admin}
                 </div>
               )}
             </div>
           ))}
         </div>
       </div>
+
+      {/* Modal de rechazo con motivo obligatorio */}
+      {modalRechazo && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
+          <div style={{ background: C.white, borderRadius: 16, padding: 28,
+            width: "100%", maxWidth: 400, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+            <h3 style={{ margin: "0 0 4px", color: C.red }}>❌ Rechazar solicitud</h3>
+            <p style={{ color: C.gray600, fontSize: 14, margin: "0 0 16px" }}>
+              {modalRechazo.equipo_imagen} {modalRechazo.equipo_nombre} — {modalRechazo.usuario_nombre}
+            </p>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13 }}>
+                Motivo del rechazo <span style={{ color: C.red }}>*</span>
+              </label>
+              <textarea value={motivoRechazo}
+                onChange={(e) => setMotivoRechazo(e.target.value)}
+                placeholder="Explica al usuario por qué se rechaza su solicitud..."
+                rows={4}
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 8,
+                  border: `1px solid ${motivoRechazo ? C.gray200 : C.red}`,
+                  boxSizing: "border-box", fontSize: 14, resize: "vertical" }} />
+              {!motivoRechazo && (
+                <p style={{ color: C.red, fontSize: 12, margin: "4px 0 0" }}>El motivo es obligatorio</p>
+              )}
+            </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <Btn outline color={C.gray600} onClick={() => setModalRechazo(null)} style={{ flex: 1 }}>
+                Cancelar
+              </Btn>
+              <Btn color={C.red} onClick={() => cambiarEstado(modalRechazo.id, "rechazado", motivoRechazo)}
+                disabled={!motivoRechazo || procesando === modalRechazo.id + "rechazado"}
+                style={{ flex: 1 }}>
+                {procesando === modalRechazo.id + "rechazado" ? "Rechazando..." : "Confirmar rechazo"}
+              </Btn>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
