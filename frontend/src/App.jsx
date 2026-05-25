@@ -576,7 +576,9 @@ export default function App() {
 
   useEffect(() => {
     if (usuario) {
-      api.getSolicitudes().then(setSolicitudes).catch(() => {});
+      api.getSolicitudes()
+  .then((data) => setSolicitudes(Array.isArray(data) ? data : []))
+  .catch(() => setSolicitudes([]));
     }
   }, [usuario]);
 
