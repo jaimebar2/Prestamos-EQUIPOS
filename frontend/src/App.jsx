@@ -11,7 +11,10 @@ const C = {
   blue: "#2563eb",  blueBg: "#dbeafe",
 };
 
-const fmtFecha = (iso) => iso ? new Date(iso).toLocaleDateString("es-CO") : "-";
+const fmtFecha = (iso) => iso ? new Date(iso).toLocaleString("es-CO", {
+  day: "2-digit", month: "2-digit", year: "numeric",
+  hour: "2-digit", minute: "2-digit"
+}) : "-";
 
 const Badge = ({ status }) => {
   const key = status?.toLowerCase();
