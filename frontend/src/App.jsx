@@ -276,12 +276,12 @@ function EquiposPage({ usuario }) {
             width: "100%", maxWidth: 400, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
             <h3 style={{ margin: "0 0 4px" }}>Solicitar préstamo</h3>
             <p style={{ color: C.gray600, margin: "0 0 20px", fontSize: 14 }}>{modal.nombre}</p>
-            <Input label="Fecha de préstamo" type="date" value={form.fecha_prestamo}
-              onChange={(e) => setForm({ ...form, fecha_prestamo: e.target.value })}
-              min={new Date().toISOString().split("T")[0]} />
-            <Input label="Fecha de devolución" type="date" value={form.fecha_devolucion}
-              onChange={(e) => setForm({ ...form, fecha_devolucion: e.target.value })}
-              min={form.fecha_prestamo || new Date().toISOString().split("T")[0]} />
+            <Input label="Fecha y hora de préstamo" type="datetime-local" value={form.fecha_prestamo}
+            onChange={(e) => setForm({ ...form, fecha_prestamo: e.target.value })}
+            min={new Date().toISOString().slice(0, 16)} />
+            <Input label="Fecha y hora de devolución" type="datetime-local" value={form.fecha_devolucion}
+            onChange={(e) => setForm({ ...form, fecha_devolucion: e.target.value })}
+          min={form.fecha_prestamo || new Date().toISOString().slice(0, 16)} />
             <div style={{ marginBottom: 14 }}>
               <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13, color: C.gray800 }}>Motivo (opcional)</label>
               <textarea value={form.motivo} onChange={(e) => setForm({ ...form, motivo: e.target.value })}
