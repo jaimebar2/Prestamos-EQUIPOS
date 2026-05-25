@@ -8,7 +8,6 @@ const headers = () => ({
 });
 
 const api = {
-  // ── Auth ──────────────────────────────────────────
   login: async (data) => {
     const res = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
@@ -27,13 +26,37 @@ const api = {
     return res.json();
   },
 
-  // ── Equipos ───────────────────────────────────────
   getEquipos: async () => {
     const res = await fetch(`${API_URL}/equipos`, { headers: headers() });
     return res.json();
   },
 
-  // ── Solicitudes ───────────────────────────────────
+  crearEquipo: async (data) => {
+    const res = await fetch(`${API_URL}/equipos`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
+  editarEquipo: async (id, data) => {
+    const res = await fetch(`${API_URL}/equipos/${id}`, {
+      method: "PUT",
+      headers: headers(),
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
+  eliminarEquipo: async (id) => {
+    const res = await fetch(`${API_URL}/equipos/${id}`, {
+      method: "DELETE",
+      headers: headers(),
+    });
+    return res.json();
+  },
+
   getSolicitudes: async () => {
     const res = await fetch(`${API_URL}/solicitudes`, { headers: headers() });
     return res.json();
