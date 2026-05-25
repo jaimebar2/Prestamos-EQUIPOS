@@ -216,10 +216,15 @@ function EquiposPage({ usuario }) {
   const [mensaje,  setMensaje]  = useState("");
 
   useEffect(() => {
-    api.getEquipos()
-      .then((data) => setEquipos(Array.isArray(data) ? data : []))
-      .catch(() => setMensaje("Error al cargar equipos"))
-      .finally(() => setLoading(false));
+    const cargar = () => {
+      api.getSolicitudes()
+        .then((data) => setSolicitudes(Array.isArray(data) ? data : []))
+        .finally(() => setLoading(false));
+    };
+    cargar();
+    // Refresca automáticamente cada 15 segundos
+    const intervalo = setInterval(cargar, 15000);
+    return () => clearInterval(intervalo);
   }, []);
 
   const enviarSolicitud = async () => {
