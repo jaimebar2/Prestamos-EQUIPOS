@@ -176,11 +176,60 @@ const TopBar = ({ title, subtitle, usuario }) => (
 function DashboardPage({ setPage, usuario, solicitudes }) {
   const pendientes = solicitudes.filter((s) => s.estado?.toLowerCase() === "pendiente").length;
   const aprobadas  = solicitudes.filter((s) => s.estado?.toLowerCase() === "aprobado").length;
+
+  // ── Calcular notificaciones de préstamos activos ──
+  const ahora = new Date();
+
+  const notificaciones = solicitudes
+    .filter((s) => s.estado?.toLowerCase() === "aprobado")
+    .map((s) => {
+      const fechaDev = new Date(s.fecha_devolucion);
+      const diffMs   = fechaDev - ahora;
+      const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      const diffHoras = Math.ceil(diffMs / (1000 * 60 * 60));
+
+      let tipo, mensaje, bg, color, icono;
+
+      if (diffMs < 0) {
+        tipo    = "vencido";
+        icono   = "🔴";
+        color   = C.red;
+        bg      = C.redBg;
+        mensaje = `Vencido hace ${Math.abs(diffDias)} día${Math.abs(diffDias) !== 1 ? "s" : ""}`;
+      } else if (diffDias <= 1) {
+        tipo    = "urgente";
+        icono   = "🟠";
+        color   = C.red;
+        bg      = "#FFF7ED";
+        mensaje = diffHoras <= 1 ? "Vence en menos de 1 hora" : `Vence en ${diffHoras} hora${diffHoras !== 1 ? "s" : ""}`;
+      } else if (diffDias <= 3) {
+        tipo    = "proximo";
+        icono   = "🟡";
+        color   = C.amber;
+        bg      = C.amberBg;
+        mensaje = `Vence en ${diffDias} día${diffDias !== 1 ? "s" : ""}`;
+      } else {
+        tipo    = "activo";
+        icono   = "🔵";
+        color   = C.blue;
+        bg      = C.blueBg;
+        mensaje = `Vence el ${fmtFecha(s.fecha_devolucion)}`;
+      }
+
+      return { ...s, tipo, mensaje, bg, color, icono };
+    })
+    .sort((a, b) => {
+      const orden = { vencido: 0, urgente: 1, proximo: 2, activo: 3 };
+      return orden[a.tipo] - orden[b.tipo];
+    });
+
   return (
     <div style={{ flex: 1, background: C.gray50 }}>
       <TopBar title={`Hola, ${usuario?.nombre?.split(" ")[0]} 👋`}
         subtitle="Sistema de préstamo de equipos" usuario={usuario} />
       <div style={{ padding: "clamp(16px,4vw,28px)" }}>
+
+        {/* Stats */}
         <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
           {[
             { label: "Pendientes", value: pendientes, bg: C.amberBg, color: C.amber },
@@ -193,6 +242,40 @@ function DashboardPage({ setPage, usuario, solicitudes }) {
             </div>
           ))}
         </div>
+
+        {/* Notificaciones */}
+        {notificaciones.length > 0 && (
+          <div style={{ marginBottom: 24 }}>
+            <h3 style={{ margin: "0 0 12px", color: C.gray800, fontSize: 16 }}>
+              🔔 Notificaciones de préstamos
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {notificaciones.map((n) => (
+                <div key={n.id} style={{ background: n.bg, border: `1px solid ${n.color}40`,
+                  borderLeft: `4px solid ${n.color}`, borderRadius: 10, padding: "14px 18px",
+                  display: "flex", flexWrap: "wrap", justifyContent: "space-between",
+                  alignItems: "center", gap: 10 }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: n.color, fontSize: 14 }}>
+                      {n.icono} {n.equipo_imagen} {n.equipo_nombre}
+                    </div>
+                    <div style={{ fontSize: 13, color: C.gray600, marginTop: 2 }}>
+                      {n.mensaje} · Prestado el {fmtFecha(n.fecha_prestamo)}
+                    </div>
+                  </div>
+                  <span style={{ background: n.color, color: "#fff", padding: "4px 12px",
+                    borderRadius: 20, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>
+                    {n.tipo === "vencido"  ? "VENCIDO"  :
+                     n.tipo === "urgente"  ? "HOY"      :
+                     n.tipo === "proximo"  ? "PRÓXIMO"  : "ACTIVO"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tarjetas de acceso rápido */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px,1fr))", gap: 20 }}>
           {[
             { icon: "💻", titulo: "Equipos", desc: "Consulta los equipos disponibles y solicita préstamos.", accion: "Ver equipos", page: "equipos" },
@@ -205,6 +288,7 @@ function DashboardPage({ setPage, usuario, solicitudes }) {
             </div>
           ))}
         </div>
+
       </div>
     </div>
   );
