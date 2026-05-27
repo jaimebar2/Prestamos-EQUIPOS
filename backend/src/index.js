@@ -21,6 +21,9 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/solicitudes", solicitudesRoutes);
+const usuariosRoutes = require("./routes/usuariosRoutes");
+app.use("/api/usuarios", usuariosRoutes);
+
 app.use("/api/equipos", equiposRoutes);
 
 // Manejo de rutas no encontradas
