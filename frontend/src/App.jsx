@@ -71,9 +71,7 @@ function LoginPage({ onLogin }) {
       const res = modo === "login"
         ? await api.login({ correo: form.correo, password: form.password })
         : await api.registro(form);
-
       if (modo === "registro") { setModo("login"); setError("✅ Registro exitoso. Espera la aprobación del administrador."); return; }
-      
       if (res.token) {
         localStorage.setItem("token", res.token);
         localStorage.setItem("usuario", JSON.stringify(res.usuario));
@@ -127,12 +125,11 @@ function Sidebar({ page, setPage, logout, esAdmin }) {
     { id: "dashboard",        label: "Inicio",          icon: "🏠" },
     { id: "equipos",          label: "Equipos",         icon: "💻" },
     { id: "mis-solicitudes",  label: "Mis solicitudes", icon: "📋" },
-
     ...(esAdmin ? [
-  { id: "admin",           label: "Panel Admin",     icon: "🛡️" },
-  { id: "gestion-equipos", label: "Gestión Equipos", icon: "⚙️" },
-  { id: "usuarios",        label: "Usuarios",        icon: "👥" },
-] : []),
+      { id: "admin",           label: "Panel Admin",     icon: "🛡️" },
+      { id: "gestion-equipos", label: "Gestión Equipos", icon: "⚙️" },
+      { id: "usuarios",        label: "Usuarios",        icon: "👥" },
+    ] : []),
   ];
   return (
     <div style={{ width: 220, minWidth: 220, background: C.white,
@@ -180,60 +177,38 @@ const TopBar = ({ title, subtitle, usuario }) => (
 function DashboardPage({ setPage, usuario, solicitudes }) {
   const pendientes = solicitudes.filter((s) => s.estado?.toLowerCase() === "pendiente").length;
   const aprobadas  = solicitudes.filter((s) => s.estado?.toLowerCase() === "aprobado").length;
-
-  // ── Calcular notificaciones de préstamos activos ──
   const ahora = new Date();
 
   const notificaciones = solicitudes
     .filter((s) => s.estado?.toLowerCase() === "aprobado")
     .map((s) => {
-      const fechaDev = new Date(s.fecha_devolucion);
-      const diffMs   = fechaDev - ahora;
-      const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      const fechaDev  = new Date(s.fecha_devolucion);
+      const diffMs    = fechaDev - ahora;
+      const diffDias  = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
       const diffHoras = Math.ceil(diffMs / (1000 * 60 * 60));
-
       let tipo, mensaje, bg, color, icono;
-
       if (diffMs < 0) {
-        tipo    = "vencido";
-        icono   = "🔴";
-        color   = C.red;
-        bg      = C.redBg;
+        tipo = "vencido"; icono = "🔴"; color = C.red; bg = C.redBg;
         mensaje = `Vencido hace ${Math.abs(diffDias)} día${Math.abs(diffDias) !== 1 ? "s" : ""}`;
       } else if (diffDias <= 1) {
-        tipo    = "urgente";
-        icono   = "🟠";
-        color   = C.red;
-        bg      = "#FFF7ED";
+        tipo = "urgente"; icono = "🟠"; color = C.red; bg = "#FFF7ED";
         mensaje = diffHoras <= 1 ? "Vence en menos de 1 hora" : `Vence en ${diffHoras} hora${diffHoras !== 1 ? "s" : ""}`;
       } else if (diffDias <= 3) {
-        tipo    = "proximo";
-        icono   = "🟡";
-        color   = C.amber;
-        bg      = C.amberBg;
+        tipo = "proximo"; icono = "🟡"; color = C.amber; bg = C.amberBg;
         mensaje = `Vence en ${diffDias} día${diffDias !== 1 ? "s" : ""}`;
       } else {
-        tipo    = "activo";
-        icono   = "🔵";
-        color   = C.blue;
-        bg      = C.blueBg;
+        tipo = "activo"; icono = "🔵"; color = C.blue; bg = C.blueBg;
         mensaje = `Vence el ${fmtFecha(s.fecha_devolucion)}`;
       }
-
       return { ...s, tipo, mensaje, bg, color, icono };
     })
-    .sort((a, b) => {
-      const orden = { vencido: 0, urgente: 1, proximo: 2, activo: 3 };
-      return orden[a.tipo] - orden[b.tipo];
-    });
+    .sort((a, b) => ({ vencido: 0, urgente: 1, proximo: 2, activo: 3 }[a.tipo] - { vencido: 0, urgente: 1, proximo: 2, activo: 3 }[b.tipo]));
 
   return (
     <div style={{ flex: 1, background: C.gray50 }}>
       <TopBar title={`Hola, ${usuario?.nombre?.split(" ")[0]} 👋`}
         subtitle="Sistema de préstamo de equipos" usuario={usuario} />
       <div style={{ padding: "clamp(16px,4vw,28px)" }}>
-
-        {/* Stats */}
         <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
           {[
             { label: "Pendientes", value: pendientes, bg: C.amberBg, color: C.amber },
@@ -247,31 +222,21 @@ function DashboardPage({ setPage, usuario, solicitudes }) {
           ))}
         </div>
 
-        {/* Notificaciones */}
         {notificaciones.length > 0 && (
           <div style={{ marginBottom: 24 }}>
-            <h3 style={{ margin: "0 0 12px", color: C.gray800, fontSize: 16 }}>
-              🔔 Notificaciones de préstamos
-            </h3>
+            <h3 style={{ margin: "0 0 12px", color: C.gray800, fontSize: 16 }}>🔔 Notificaciones de préstamos</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {notificaciones.map((n) => (
                 <div key={n.id} style={{ background: n.bg, border: `1px solid ${n.color}40`,
                   borderLeft: `4px solid ${n.color}`, borderRadius: 10, padding: "14px 18px",
-                  display: "flex", flexWrap: "wrap", justifyContent: "space-between",
-                  alignItems: "center", gap: 10 }}>
+                  display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                   <div>
-                    <div style={{ fontWeight: 700, color: n.color, fontSize: 14 }}>
-                      {n.icono} {n.equipo_imagen} {n.equipo_nombre}
-                    </div>
-                    <div style={{ fontSize: 13, color: C.gray600, marginTop: 2 }}>
-                      {n.mensaje} · Prestado el {fmtFecha(n.fecha_prestamo)}
-                    </div>
+                    <div style={{ fontWeight: 700, color: n.color, fontSize: 14 }}>{n.icono} {n.equipo_imagen} {n.equipo_nombre}</div>
+                    <div style={{ fontSize: 13, color: C.gray600, marginTop: 2 }}>{n.mensaje} · Prestado el {fmtFecha(n.fecha_prestamo)}</div>
                   </div>
                   <span style={{ background: n.color, color: "#fff", padding: "4px 12px",
                     borderRadius: 20, fontSize: 12, fontWeight: 700, whiteSpace: "nowrap" }}>
-                    {n.tipo === "vencido"  ? "VENCIDO"  :
-                     n.tipo === "urgente"  ? "HOY"      :
-                     n.tipo === "proximo"  ? "PRÓXIMO"  : "ACTIVO"}
+                    {n.tipo === "vencido" ? "VENCIDO" : n.tipo === "urgente" ? "HOY" : n.tipo === "proximo" ? "PRÓXIMO" : "ACTIVO"}
                   </span>
                 </div>
               ))}
@@ -279,7 +244,6 @@ function DashboardPage({ setPage, usuario, solicitudes }) {
           </div>
         )}
 
-        {/* Tarjetas de acceso rápido */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px,1fr))", gap: 20 }}>
           {[
             { icon: "💻", titulo: "Equipos", desc: "Consulta los equipos disponibles y solicita préstamos.", accion: "Ver equipos", page: "equipos" },
@@ -292,13 +256,12 @@ function DashboardPage({ setPage, usuario, solicitudes }) {
             </div>
           ))}
         </div>
-
       </div>
     </div>
   );
 }
 
-// ── Equipos (usuario solicita) ─────────────────────────────
+// ── Equipos ────────────────────────────────────────────────
 function EquiposPage({ usuario }) {
   const [equipos,  setEquipos]  = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -307,7 +270,6 @@ function EquiposPage({ usuario }) {
   const [enviando, setEnviando] = useState(false);
   const [mensaje,  setMensaje]  = useState("");
 
-  // BUG CORREGIDO: usaba getSolicitudes en lugar de getEquipos
   useEffect(() => {
     api.getEquipos()
       .then((data) => setEquipos(Array.isArray(data) ? data : []))
@@ -320,11 +282,8 @@ function EquiposPage({ usuario }) {
     setEnviando(true); setMensaje("");
     try {
       const res = await api.crearSolicitud({ equipo_id: modal.id, ...form });
-      if (res.id) {
-        setMensaje("✅ Solicitud enviada. El admin la revisará pronto.");
-        setModal(null);
-        setForm({ fecha_prestamo: "", fecha_devolucion: "", motivo: "" });
-      } else setMensaje(res.mensaje || "Error al enviar solicitud");
+      if (res.id) { setMensaje("✅ Solicitud enviada. El admin la revisará pronto."); setModal(null); setForm({ fecha_prestamo: "", fecha_devolucion: "", motivo: "" }); }
+      else setMensaje(res.mensaje || "Error al enviar solicitud");
     } catch { setMensaje("Error de conexión"); }
     finally { setEnviando(false); }
   };
@@ -352,9 +311,7 @@ function EquiposPage({ usuario }) {
                 {eq.descripcion && <div style={{ color: C.gray600, fontSize: 13 }}>{eq.descripcion}</div>}
               </div>
               <Badge status={eq.estado} />
-              <Btn onClick={() => { setModal(eq); setMensaje(""); }} disabled={eq.estado === "no_disponible"}>
-                Solicitar
-              </Btn>
+              <Btn onClick={() => { setModal(eq); setMensaje(""); }} disabled={eq.estado === "no_disponible"}>Solicitar</Btn>
             </div>
           ))}
         </div>
@@ -368,11 +325,11 @@ function EquiposPage({ usuario }) {
             <h3 style={{ margin: "0 0 4px" }}>Solicitar préstamo</h3>
             <p style={{ color: C.gray600, margin: "0 0 20px", fontSize: 14 }}>{modal.nombre}</p>
             <Input label="Fecha y hora de préstamo" type="datetime-local" value={form.fecha_prestamo}
-            onChange={(e) => setForm({ ...form, fecha_prestamo: e.target.value })}
-            min={new Date().toISOString().slice(0, 16)} />
+              onChange={(e) => setForm({ ...form, fecha_prestamo: e.target.value })}
+              min={new Date().toISOString().slice(0, 16)} />
             <Input label="Fecha y hora de devolución" type="datetime-local" value={form.fecha_devolucion}
-            onChange={(e) => setForm({ ...form, fecha_devolucion: e.target.value })}
-          min={form.fecha_prestamo || new Date().toISOString().slice(0, 16)} />
+              onChange={(e) => setForm({ ...form, fecha_devolucion: e.target.value })}
+              min={form.fecha_prestamo || new Date().toISOString().slice(0, 16)} />
             <div style={{ marginBottom: 14 }}>
               <label style={{ display: "block", marginBottom: 4, fontWeight: 600, fontSize: 13, color: C.gray800 }}>Motivo (opcional)</label>
               <textarea value={form.motivo} onChange={(e) => setForm({ ...form, motivo: e.target.value })}
@@ -383,9 +340,7 @@ function EquiposPage({ usuario }) {
             {mensaje && <p style={{ color: C.red, fontSize: 13, marginBottom: 10 }}>{mensaje}</p>}
             <div style={{ display: "flex", gap: 10 }}>
               <Btn outline color={C.gray600} onClick={() => setModal(null)} style={{ flex: 1 }}>Cancelar</Btn>
-              <Btn onClick={enviarSolicitud} disabled={enviando} style={{ flex: 1 }}>
-                {enviando ? "Enviando..." : "Confirmar"}
-              </Btn>
+              <Btn onClick={enviarSolicitud} disabled={enviando} style={{ flex: 1 }}>{enviando ? "Enviando..." : "Confirmar"}</Btn>
             </div>
           </div>
         </div>
@@ -406,7 +361,6 @@ function SolicitudesPage({ usuario }) {
         .finally(() => setLoading(false));
     };
     cargar();
-    // Refresca cada 15 segundos para ver cambios del admin
     const intervalo = setInterval(cargar, 15000);
     return () => clearInterval(intervalo);
   }, []);
@@ -419,9 +373,7 @@ function SolicitudesPage({ usuario }) {
       <div style={{ padding: "clamp(16px,4vw,28px)" }}>
         <div style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.gray200}`, overflowX: "auto" }}>
           {solicitudes.length === 0 ? (
-            <p style={{ padding: 32, textAlign: "center", color: C.gray400 }}>
-              No tienes solicitudes aún. ¡Ve a Equipos para hacer tu primera solicitud!
-            </p>
+            <p style={{ padding: 32, textAlign: "center", color: C.gray400 }}>No tienes solicitudes aún. ¡Ve a Equipos para hacer tu primera solicitud!</p>
           ) : (
             <table style={{ width: "100%", minWidth: 600, borderCollapse: "collapse" }}>
               <thead style={{ background: C.gray50 }}>
@@ -446,9 +398,7 @@ function SolicitudesPage({ usuario }) {
                       <Badge status={s.estado} />
                       {s.nota_admin && (
                         <div style={{ fontSize: 11, marginTop: 6, padding: "4px 8px",
-                          background: C.amberBg, color: C.amber, borderRadius: 6 }}>
-                          📌 {s.nota_admin}
-                        </div>
+                          background: C.amberBg, color: C.amber, borderRadius: 6 }}>📌 {s.nota_admin}</div>
                       )}
                     </td>
                   </tr>
@@ -464,13 +414,12 @@ function SolicitudesPage({ usuario }) {
 
 // ── Panel Admin ────────────────────────────────────────────
 function AdminPage({ usuario }) {
-  const [solicitudes, setSolicitudes] = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [filtro,      setFiltro]      = useState("todos");
-  const [nota,        setNota]        = useState({});
-  const [procesando,  setProcesando]  = useState(null);
-  // BUG CORREGIDO: modal de rechazo para escribir motivo obligatorio
-  const [modalRechazo, setModalRechazo] = useState(null);
+  const [solicitudes,   setSolicitudes]   = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [filtro,        setFiltro]        = useState("todos");
+  const [nota,          setNota]          = useState({});
+  const [procesando,    setProcesando]    = useState(null);
+  const [modalRechazo,  setModalRechazo]  = useState(null);
   const [motivoRechazo, setMotivoRechazo] = useState("");
 
   const cargar = () => {
@@ -485,23 +434,12 @@ function AdminPage({ usuario }) {
   const cambiarEstado = async (id, estado, notaOverride) => {
     setProcesando(id + estado);
     try {
-      const res = await api.actualizarEstado(id, {
-        estado,
-        nota_admin: notaOverride ?? nota[id] ?? null
-      });
+      const res = await api.actualizarEstado(id, { estado, nota_admin: notaOverride ?? nota[id] ?? null });
       if (res.id) { cargar(); setModalRechazo(null); setMotivoRechazo(""); }
     } finally { setProcesando(null); }
   };
 
-  const abrirRechazo = (s) => {
-    setModalRechazo(s);
-    setMotivoRechazo("");
-  };
-
-  // BUG CORREGIDO: comparación con toLowerCase()
-  const filtradas = filtro === "todos"
-    ? solicitudes
-    : solicitudes.filter((s) => s.estado?.toLowerCase() === filtro);
+  const filtradas = filtro === "todos" ? solicitudes : solicitudes.filter((s) => s.estado?.toLowerCase() === filtro);
 
   if (loading) return <div style={{ padding: 40, color: C.gray600 }}>Cargando…</div>;
 
@@ -518,35 +456,26 @@ function AdminPage({ usuario }) {
                 cursor: "pointer", fontWeight: 600, fontSize: 13, textTransform: "capitalize" }}>
               {f === "todos" ? "Todas" : f}
               {f !== "todos" && (
-                <span style={{ marginLeft: 6, background: "rgba(255,255,255,0.3)",
-                  borderRadius: 10, padding: "1px 7px", fontSize: 11 }}>
+                <span style={{ marginLeft: 6, background: "rgba(255,255,255,0.3)", borderRadius: 10, padding: "1px 7px", fontSize: 11 }}>
                   {solicitudes.filter((s) => s.estado?.toLowerCase() === f).length}
                 </span>
               )}
             </button>
           ))}
         </div>
-
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {filtradas.length === 0 && (
-            <p style={{ textAlign: "center", color: C.gray400, padding: 32 }}>No hay solicitudes.</p>
-          )}
+          {filtradas.length === 0 && <p style={{ textAlign: "center", color: C.gray400, padding: 32 }}>No hay solicitudes.</p>}
           {filtradas.map((s) => (
             <div key={s.id} style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.gray200}`, padding: 20 }}>
-              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between",
-                alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16 }}>{s.equipo_imagen} {s.equipo_nombre}</div>
                   <div style={{ color: C.gray600, fontSize: 13 }}>👤 {s.usuario_nombre} · {s.usuario_correo}</div>
-                  <div style={{ color: C.gray600, fontSize: 13, marginTop: 2 }}>
-                    📅 {fmtFecha(s.fecha_prestamo)} → {fmtFecha(s.fecha_devolucion)}
-                  </div>
+                  <div style={{ color: C.gray600, fontSize: 13, marginTop: 2 }}>📅 {fmtFecha(s.fecha_prestamo)} → {fmtFecha(s.fecha_devolucion)}</div>
                   {s.motivo && <div style={{ color: C.gray600, fontSize: 13, marginTop: 2 }}>📝 {s.motivo}</div>}
                 </div>
                 <Badge status={s.estado} />
               </div>
-
-              {/* Botones para solicitudes PENDIENTES */}
               {s.estado?.toLowerCase() === "pendiente" && (
                 <div style={{ borderTop: `1px solid ${C.gray200}`, paddingTop: 14 }}>
                   <input placeholder="Nota para el usuario al aprobar (opcional)"
@@ -555,31 +484,18 @@ function AdminPage({ usuario }) {
                     style={{ width: "100%", padding: "8px 12px", borderRadius: 8,
                       border: `1px solid ${C.gray200}`, boxSizing: "border-box", fontSize: 13, marginBottom: 10 }} />
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <Btn onClick={() => cambiarEstado(s.id, "aprobado")}
-                      disabled={procesando === s.id + "aprobado"} color={C.green}>
-                      ✅ Aprobar
-                    </Btn>
-                    <Btn onClick={() => abrirRechazo(s)}
-                      disabled={procesando === s.id + "rechazado"} color={C.red}>
-                      ❌ Rechazar
-                    </Btn>
+                    <Btn onClick={() => cambiarEstado(s.id, "aprobado")} disabled={procesando === s.id + "aprobado"} color={C.green}>✅ Aprobar</Btn>
+                    <Btn onClick={() => { setModalRechazo(s); setMotivoRechazo(""); }} disabled={procesando === s.id + "rechazado"} color={C.red}>❌ Rechazar</Btn>
                   </div>
                 </div>
               )}
-
-              {/* Botón para solicitudes APROBADAS */}
               {s.estado?.toLowerCase() === "aprobado" && (
                 <div style={{ borderTop: `1px solid ${C.gray200}`, paddingTop: 14 }}>
-                  <Btn onClick={() => cambiarEstado(s.id, "devuelto")}
-                    disabled={procesando === s.id + "devuelto"} color={C.blue}>
-                    📦 Marcar como devuelto
-                  </Btn>
+                  <Btn onClick={() => cambiarEstado(s.id, "devuelto")} disabled={procesando === s.id + "devuelto"} color={C.blue}>📦 Marcar como devuelto</Btn>
                 </div>
               )}
-
               {s.nota_admin && (
-                <div style={{ marginTop: 10, padding: "8px 12px", background: C.amberBg,
-                  borderRadius: 8, fontSize: 13, color: C.amber, fontWeight: 600 }}>
+                <div style={{ marginTop: 10, padding: "8px 12px", background: C.amberBg, borderRadius: 8, fontSize: 13, color: C.amber, fontWeight: 600 }}>
                   📌 Nota: {s.nota_admin}
                 </div>
               )}
@@ -588,7 +504,6 @@ function AdminPage({ usuario }) {
         </div>
       </div>
 
-      {/* Modal de rechazo con motivo obligatorio */}
       {modalRechazo && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
           display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
@@ -602,24 +517,17 @@ function AdminPage({ usuario }) {
               <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13 }}>
                 Motivo del rechazo <span style={{ color: C.red }}>*</span>
               </label>
-              <textarea value={motivoRechazo}
-                onChange={(e) => setMotivoRechazo(e.target.value)}
-                placeholder="Explica al usuario por qué se rechaza su solicitud..."
-                rows={4}
+              <textarea value={motivoRechazo} onChange={(e) => setMotivoRechazo(e.target.value)}
+                placeholder="Explica al usuario por qué se rechaza su solicitud..." rows={4}
                 style={{ width: "100%", padding: "10px 12px", borderRadius: 8,
                   border: `1px solid ${motivoRechazo ? C.gray200 : C.red}`,
                   boxSizing: "border-box", fontSize: 14, resize: "vertical" }} />
-              {!motivoRechazo && (
-                <p style={{ color: C.red, fontSize: 12, margin: "4px 0 0" }}>El motivo es obligatorio</p>
-              )}
+              {!motivoRechazo && <p style={{ color: C.red, fontSize: 12, margin: "4px 0 0" }}>El motivo es obligatorio</p>}
             </div>
             <div style={{ display: "flex", gap: 10 }}>
-              <Btn outline color={C.gray600} onClick={() => setModalRechazo(null)} style={{ flex: 1 }}>
-                Cancelar
-              </Btn>
+              <Btn outline color={C.gray600} onClick={() => setModalRechazo(null)} style={{ flex: 1 }}>Cancelar</Btn>
               <Btn color={C.red} onClick={() => cambiarEstado(modalRechazo.id, "rechazado", motivoRechazo)}
-                disabled={!motivoRechazo || procesando === modalRechazo.id + "rechazado"}
-                style={{ flex: 1 }}>
+                disabled={!motivoRechazo || procesando === modalRechazo.id + "rechazado"} style={{ flex: 1 }}>
                 {procesando === modalRechazo.id + "rechazado" ? "Rechazando..." : "Confirmar rechazo"}
               </Btn>
             </div>
@@ -630,7 +538,7 @@ function AdminPage({ usuario }) {
   );
 }
 
-// ── Gestión de Equipos (Admin) ─────────────────────────────
+// ── Gestión de Equipos ─────────────────────────────────────
 function GestionEquiposPage({ usuario }) {
   const [equipos,   setEquipos]   = useState([]);
   const [loading,   setLoading]   = useState(true);
@@ -638,46 +546,31 @@ function GestionEquiposPage({ usuario }) {
   const [form,      setForm]      = useState({ nombre: "", tipo: "", descripcion: "", imagen: "💻", estado: "disponible" });
   const [mensaje,   setMensaje]   = useState("");
   const [guardando, setGuardando] = useState(false);
-
   const EMOJIS = ["💻", "📽️", "📷", "🔌", "🎙️", "📱", "🖨️", "🖥️", "⌨️", "🖱️"];
 
   const cargar = () => {
     setLoading(true);
-    api.getEquipos()
-      .then((data) => setEquipos(Array.isArray(data) ? data : []))
-      .finally(() => setLoading(false));
+    api.getEquipos().then((data) => setEquipos(Array.isArray(data) ? data : [])).finally(() => setLoading(false));
   };
 
   useEffect(() => { cargar(); }, []);
 
-  const abrirNuevo = () => {
-    setForm({ nombre: "", tipo: "", descripcion: "", imagen: "💻", estado: "disponible" });
-    setModal("nuevo"); setMensaje("");
-  };
-
-  const abrirEditar = (eq) => {
-    setForm({ nombre: eq.nombre, tipo: eq.tipo, descripcion: eq.descripcion || "",
-      imagen: eq.imagen || "💻", estado: eq.estado });
-    setModal(eq); setMensaje("");
-  };
+  const abrirNuevo = () => { setForm({ nombre: "", tipo: "", descripcion: "", imagen: "💻", estado: "disponible" }); setModal("nuevo"); setMensaje(""); };
+  const abrirEditar = (eq) => { setForm({ nombre: eq.nombre, tipo: eq.tipo, descripcion: eq.descripcion || "", imagen: eq.imagen || "💻", estado: eq.estado }); setModal(eq); setMensaje(""); };
 
   const guardar = async () => {
     if (!form.nombre || !form.tipo) return setMensaje("Nombre y tipo son requeridos");
     setGuardando(true);
     try {
-      const res = modal === "nuevo"
-        ? await api.crearEquipo(form)
-        : await api.editarEquipo(modal.id, form);
-      if (res.id) { cargar(); setModal(null); }
-      else setMensaje(res.mensaje || "Error al guardar");
+      const res = modal === "nuevo" ? await api.crearEquipo(form) : await api.editarEquipo(modal.id, form);
+      if (res.id) { cargar(); setModal(null); } else setMensaje(res.mensaje || "Error al guardar");
     } catch { setMensaje("Error de conexión"); }
     finally { setGuardando(false); }
   };
 
   const eliminar = async (id) => {
     if (!confirm("¿Seguro que quieres eliminar este equipo?")) return;
-    await api.eliminarEquipo(id);
-    cargar();
+    await api.eliminarEquipo(id); cargar();
   };
 
   if (loading) return <div style={{ padding: 40, color: C.gray600 }}>Cargando equipos…</div>;
@@ -690,9 +583,7 @@ function GestionEquiposPage({ usuario }) {
           <Btn onClick={abrirNuevo}>+ Nuevo equipo</Btn>
         </div>
         <div style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.gray200}` }}>
-          {equipos.length === 0 && (
-            <p style={{ padding: 32, textAlign: "center", color: C.gray400 }}>No hay equipos. ¡Agrega el primero!</p>
-          )}
+          {equipos.length === 0 && <p style={{ padding: 32, textAlign: "center", color: C.gray400 }}>No hay equipos. ¡Agrega el primero!</p>}
           {equipos.map((eq, i) => (
             <div key={eq.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16,
               padding: "16px 24px", borderBottom: i < equipos.length - 1 ? `1px solid ${C.gray200}` : "none" }}>
@@ -711,22 +602,15 @@ function GestionEquiposPage({ usuario }) {
           ))}
         </div>
       </div>
-
       {modal !== null && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
           display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100, padding: 16 }}>
           <div style={{ background: C.white, borderRadius: 16, padding: 28,
             width: "100%", maxWidth: 420, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
             <h3 style={{ margin: "0 0 20px" }}>{modal === "nuevo" ? "Nuevo equipo" : "Editar equipo"}</h3>
-            <Input label="Nombre" value={form.nombre}
-              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-              placeholder="Ej: Laptop Dell Inspiron" />
-            <Input label="Tipo" value={form.tipo}
-              onChange={(e) => setForm({ ...form, tipo: e.target.value })}
-              placeholder="Ej: Laptop, Proyector, Cámara" />
-            <Input label="Descripción (opcional)" value={form.descripcion}
-              onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-              placeholder="Breve descripción del equipo" />
+            <Input label="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} placeholder="Ej: Laptop Dell Inspiron" />
+            <Input label="Tipo" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })} placeholder="Ej: Laptop, Proyector, Cámara" />
+            <Input label="Descripción (opcional)" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} placeholder="Breve descripción del equipo" />
             <div style={{ marginBottom: 14 }}>
               <label style={{ display: "block", marginBottom: 6, fontWeight: 600, fontSize: 13 }}>Ícono</label>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -734,9 +618,7 @@ function GestionEquiposPage({ usuario }) {
                   <button key={e} onClick={() => setForm({ ...form, imagen: e })}
                     style={{ fontSize: 22, padding: "6px 10px", borderRadius: 8, cursor: "pointer",
                       border: `2px solid ${form.imagen === e ? C.primary : C.gray200}`,
-                      background: form.imagen === e ? C.blueBg : "transparent" }}>
-                    {e}
-                  </button>
+                      background: form.imagen === e ? C.blueBg : "transparent" }}>{e}</button>
                 ))}
               </div>
             </div>
@@ -757,9 +639,7 @@ function GestionEquiposPage({ usuario }) {
             {mensaje && <p style={{ color: C.red, fontSize: 13, marginBottom: 10 }}>{mensaje}</p>}
             <div style={{ display: "flex", gap: 10 }}>
               <Btn outline color={C.gray600} onClick={() => setModal(null)} style={{ flex: 1 }}>Cancelar</Btn>
-              <Btn onClick={guardar} disabled={guardando} style={{ flex: 1 }}>
-                {guardando ? "Guardando..." : "Guardar"}
-              </Btn>
+              <Btn onClick={guardar} disabled={guardando} style={{ flex: 1 }}>{guardando ? "Guardando..." : "Guardar"}</Btn>
             </div>
           </div>
         </div>
@@ -768,7 +648,7 @@ function GestionEquiposPage({ usuario }) {
   );
 }
 
-// ── App Principal ──────────────────────────────────────────
+// ── Gestión de Usuarios (Admin) ────────────────────────────
 function UsuariosPage({ usuario }) {
   const [usuarios,   setUsuarios]   = useState([]);
   const [loading,    setLoading]    = useState(true);
@@ -806,8 +686,6 @@ function UsuariosPage({ usuario }) {
     <div style={{ flex: 1, background: C.gray50 }}>
       <TopBar title="Gestión de Usuarios" subtitle="Aprueba o rechaza accesos al sistema" usuario={usuario} />
       <div style={{ padding: "clamp(16px,4vw,28px)" }}>
-
-        {/* Filtros */}
         <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
           {[
             { id: "pendientes", label: `Pendientes (${pendientesCount})` },
@@ -823,59 +701,92 @@ function UsuariosPage({ usuario }) {
             </button>
           ))}
         </div>
-
         <div style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.gray200}` }}>
           {filtrados.length === 0 && (
-            <p style={{ padding: 32, textAlign: "center", color: C.gray400 }}>
-              No hay usuarios en esta categoría.
-            </p>
+            <p style={{ padding: 32, textAlign: "center", color: C.gray400 }}>No hay usuarios en esta categoría.</p>
           )}
           {filtrados.map((u, i) => (
             <div key={u.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16,
-              padding: "16px 24px",
-              borderBottom: i < filtrados.length - 1 ? `1px solid ${C.gray200}` : "none" }}>
-
-              {/* Avatar */}
+              padding: "16px 24px", borderBottom: i < filtrados.length - 1 ? `1px solid ${C.gray200}` : "none" }}>
               <div style={{ width: 42, height: 42, borderRadius: "50%",
                 background: u.activo ? C.blueBg : C.amberBg,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontWeight: 700, fontSize: 15, color: u.activo ? C.primary : C.amber, flexShrink: 0 }}>
                 {u.nombre.slice(0, 2).toUpperCase()}
               </div>
-
               <div style={{ flex: 1, minWidth: 140 }}>
                 <div style={{ fontWeight: 700, color: C.gray800 }}>{u.nombre}</div>
                 <div style={{ color: C.gray400, fontSize: 13 }}>{u.correo}</div>
-                <div style={{ color: C.gray400, fontSize: 12, marginTop: 2 }}>
-                  ID: {u.id}
-                </div>
+                <div style={{ color: C.gray400, fontSize: 12, marginTop: 2 }}>ID: {u.id}</div>
               </div>
-
-              <span style={{
-                background: u.activo ? C.greenBg : C.amberBg,
+              <span style={{ background: u.activo ? C.greenBg : C.amberBg,
                 color: u.activo ? C.green : C.amber,
                 padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600 }}>
                 {u.activo ? "✅ Aprobado" : "⏳ Pendiente"}
               </span>
-
               <div style={{ display: "flex", gap: 8 }}>
                 {!u.activo && (
-                  <Btn onClick={() => cambiarEstado(u.id, true)}
-                    disabled={procesando === u.id} color={C.green}>
-                    ✅ Aprobar
-                  </Btn>
+                  <Btn onClick={() => cambiarEstado(u.id, true)} disabled={procesando === u.id} color={C.green}>✅ Aprobar</Btn>
                 )}
                 {u.activo && (
-                  <Btn onClick={() => cambiarEstado(u.id, false)}
-                    disabled={procesando === u.id} outline color={C.red}>
-                    🚫 Revocar acceso
-                  </Btn>
+                  <Btn onClick={() => cambiarEstado(u.id, false)} disabled={procesando === u.id} outline color={C.red}>🚫 Revocar acceso</Btn>
                 )}
               </div>
             </div>
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── App Principal ──────────────────────────────────────────
+export default function App() {
+  const [usuario, setUsuario] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("usuario")); } catch { return null; }
+  });
+  const [page,        setPage]        = useState("dashboard");
+  const [solicitudes, setSolicitudes] = useState([]);
+  const esAdmin = usuario?.rol === "admin";
+
+  useEffect(() => {
+    if (usuario) {
+      const cargar = () => {
+        api.getSolicitudes()
+          .then((data) => setSolicitudes(Array.isArray(data) ? data : []))
+          .catch(() => setSolicitudes([]));
+      };
+      cargar();
+      const intervalo = setInterval(cargar, 15000);
+      return () => clearInterval(intervalo);
+    }
+  }, [usuario]);
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("usuario");
+    setUsuario(null);
+    setPage("dashboard");
+  };
+
+  if (!usuario) return <LoginPage onLogin={(u) => setUsuario(u)} />;
+
+  const renderPage = () => {
+    switch (page) {
+      case "equipos":          return <EquiposPage usuario={usuario} />;
+      case "mis-solicitudes":  return <SolicitudesPage usuario={usuario} />;
+      case "admin":            return esAdmin ? <AdminPage usuario={usuario} /> : null;
+      case "gestion-equipos":  return esAdmin ? <GestionEquiposPage usuario={usuario} /> : null;
+      case "usuarios":         return esAdmin ? <UsuariosPage usuario={usuario} /> : null;
+      default:                 return <DashboardPage setPage={setPage} usuario={usuario} solicitudes={solicitudes} />;
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", fontFamily: "system-ui, -apple-system, sans-serif",
+      minHeight: "100vh", background: C.gray50 }}>
+      <Sidebar page={page} setPage={setPage} logout={logout} esAdmin={esAdmin} />
+      {renderPage()}
     </div>
   );
 }
