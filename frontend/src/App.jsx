@@ -724,14 +724,22 @@ function UsuariosPage({ usuario }) {
                 padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600 }}>
                 {u.activo ? "✅ Aprobado" : "⏳ Pendiente"}
               </span>
+
+
               <div style={{ display: "flex", gap: 8 }}>
                 {!u.activo && (
+                  <>
                   <Btn onClick={() => cambiarEstado(u.id, true)} disabled={procesando === u.id} color={C.green}>✅ Aprobar</Btn>
-                )}
-                {u.activo && (
-                  <Btn onClick={() => cambiarEstado(u.id, false)} disabled={procesando === u.id} outline color={C.red}>🚫 Revocar acceso</Btn>
-                )}
-              </div>
+                  <Btn onClick={() => { if(confirm(`¿Rechazar y eliminar a ${u.nombre}?`)) cambiarEstado(u.id, false); }}
+                  disabled={procesando === u.id} color={C.red}>❌ Rechazar</Btn>
+                    </>
+                      )}
+                      {u.activo && (
+                    <Btn onClick={() => { if(confirm(`¿Revocar acceso a ${u.nombre}?`)) cambiarEstado(u.id, false); }}
+                      disabled={procesando === u.id} outline color={C.red}>🚫 Revocar acceso</Btn>
+                      )}
+                    < /div>
+              
             </div>
           ))}
         </div>
