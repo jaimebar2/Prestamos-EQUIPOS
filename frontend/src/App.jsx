@@ -847,7 +847,7 @@ function UsuariosPage({ usuario }) {
                 <div style={{ fontWeight: 700, color: C.gray800 }}>{u.nombre}</div>
                 <div style={{ color: C.gray400, fontSize: 13 }}>{u.correo}</div>
                 <div style={{ color: C.gray400, fontSize: 12, marginTop: 2 }}>
-                  Registrado el {fmtFecha(u.created_at)}
+                  ID: {u.id}
                 </div>
               </div>
 
@@ -876,51 +876,6 @@ function UsuariosPage({ usuario }) {
           ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-export default function App() {
-  const [usuario, setUsuario] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("usuario")); } catch { return null; }
-  });
-  const [page,        setPage]        = useState("dashboard");
-  const [solicitudes, setSolicitudes] = useState([]);
-  const esAdmin = usuario?.rol === "admin";
-
-  useEffect(() => {
-    if (usuario) {
-      api.getSolicitudes()
-        .then((data) => setSolicitudes(Array.isArray(data) ? data : []))
-        .catch(() => setSolicitudes([]));
-    }
-  }, [usuario]);
-
-  const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("usuario");
-    setUsuario(null);
-    setPage("dashboard");
-  };
-
-  if (!usuario) return <LoginPage onLogin={(u) => setUsuario(u)} />;
-
- const renderPage = () => {
-    switch (page) {
-      case "equipos":          return <EquiposPage usuario={usuario} />;
-      case "mis-solicitudes":  return <SolicitudesPage usuario={usuario} />;
-      case "admin":            return esAdmin ? <AdminPage usuario={usuario} /> : null;
-      case "gestion-equipos":  return esAdmin ? <GestionEquiposPage usuario={usuario} /> : null;
-      case "usuarios":         return esAdmin ? <UsuariosPage usuario={usuario} /> : null;
-      default:                 return <DashboardPage setPage={setPage} usuario={usuario} solicitudes={solicitudes} />;
-    }
-  };
-
-  return (
-    <div style={{ display: "flex", fontFamily: "system-ui, -apple-system, sans-serif",
-      minHeight: "100vh", background: C.gray50 }}>
-      <Sidebar page={page} setPage={setPage} logout={logout} esAdmin={esAdmin} />
-      {renderPage()}
     </div>
   );
 }
