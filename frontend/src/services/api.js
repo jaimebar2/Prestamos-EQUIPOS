@@ -79,6 +79,21 @@ const api = {
     });
     return res.json();
   },
+
+  getUsuarios: async () => {
+    const res = await fetch(`${API_URL}/usuarios`, { headers: headers() });
+    return res.json();
+  },
+
+  actualizarUsuario: async (id, data) => {
+    const res = await fetch(`${API_URL}/usuarios/${id}`, {
+      method: "PUT",
+      headers: headers(),
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+  
 };
 
 export default api;
