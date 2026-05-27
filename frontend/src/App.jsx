@@ -71,7 +71,9 @@ function LoginPage({ onLogin }) {
       const res = modo === "login"
         ? await api.login({ correo: form.correo, password: form.password })
         : await api.registro(form);
-      if (modo === "registro") { setModo("login"); setError("✅ Cuenta creada. Inicia sesión."); return; }
+
+      if (modo === "registro") { setModo("login"); setError("✅ Registro exitoso. Espera la aprobación del administrador."); return; }
+      
       if (res.token) {
         localStorage.setItem("token", res.token);
         localStorage.setItem("usuario", JSON.stringify(res.usuario));
@@ -125,10 +127,12 @@ function Sidebar({ page, setPage, logout, esAdmin }) {
     { id: "dashboard",        label: "Inicio",          icon: "🏠" },
     { id: "equipos",          label: "Equipos",         icon: "💻" },
     { id: "mis-solicitudes",  label: "Mis solicitudes", icon: "📋" },
+
     ...(esAdmin ? [
-      { id: "admin",           label: "Panel Admin",     icon: "🛡️" },
-      { id: "gestion-equipos", label: "Gestión Equipos", icon: "⚙️" },
-    ] : []),
+  { id: "admin",           label: "Panel Admin",     icon: "🛡️" },
+  { id: "gestion-equipos", label: "Gestión Equipos", icon: "⚙️" },
+  { id: "usuarios",        label: "Usuarios",        icon: "👥" },
+] : []),
   ];
   return (
     <div style={{ width: 220, minWidth: 220, background: C.white,
@@ -765,6 +769,117 @@ function GestionEquiposPage({ usuario }) {
 }
 
 // ── App Principal ──────────────────────────────────────────
+function UsuariosPage({ usuario }) {
+  const [usuarios,   setUsuarios]   = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [filtro,     setFiltro]     = useState("pendientes");
+  const [procesando, setProcesando] = useState(null);
+
+  const cargar = () => {
+    setLoading(true);
+    api.getUsuarios()
+      .then((data) => setUsuarios(Array.isArray(data) ? data : []))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(cargar, []);
+
+  const cambiarEstado = async (id, activo) => {
+    setProcesando(id);
+    try {
+      const res = await api.actualizarUsuario(id, { activo });
+      if (res.id) cargar();
+    } finally { setProcesando(null); }
+  };
+
+  const filtrados = filtro === "pendientes"
+    ? usuarios.filter((u) => !u.activo)
+    : filtro === "aprobados"
+    ? usuarios.filter((u) => u.activo)
+    : usuarios;
+
+  if (loading) return <div style={{ padding: 40, color: C.gray600 }}>Cargando usuarios…</div>;
+
+  const pendientesCount = usuarios.filter((u) => !u.activo).length;
+
+  return (
+    <div style={{ flex: 1, background: C.gray50 }}>
+      <TopBar title="Gestión de Usuarios" subtitle="Aprueba o rechaza accesos al sistema" usuario={usuario} />
+      <div style={{ padding: "clamp(16px,4vw,28px)" }}>
+
+        {/* Filtros */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+          {[
+            { id: "pendientes", label: `Pendientes (${pendientesCount})` },
+            { id: "aprobados",  label: "Aprobados" },
+            { id: "todos",      label: "Todos" },
+          ].map((f) => (
+            <button key={f.id} onClick={() => setFiltro(f.id)}
+              style={{ padding: "7px 16px", borderRadius: 20, border: `2px solid ${C.primary}`,
+                background: filtro === f.id ? C.primary : "transparent",
+                color: filtro === f.id ? "#fff" : C.primary,
+                cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ background: C.white, borderRadius: 12, border: `1px solid ${C.gray200}` }}>
+          {filtrados.length === 0 && (
+            <p style={{ padding: 32, textAlign: "center", color: C.gray400 }}>
+              No hay usuarios en esta categoría.
+            </p>
+          )}
+          {filtrados.map((u, i) => (
+            <div key={u.id} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 16,
+              padding: "16px 24px",
+              borderBottom: i < filtrados.length - 1 ? `1px solid ${C.gray200}` : "none" }}>
+
+              {/* Avatar */}
+              <div style={{ width: 42, height: 42, borderRadius: "50%",
+                background: u.activo ? C.blueBg : C.amberBg,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontWeight: 700, fontSize: 15, color: u.activo ? C.primary : C.amber, flexShrink: 0 }}>
+                {u.nombre.slice(0, 2).toUpperCase()}
+              </div>
+
+              <div style={{ flex: 1, minWidth: 140 }}>
+                <div style={{ fontWeight: 700, color: C.gray800 }}>{u.nombre}</div>
+                <div style={{ color: C.gray400, fontSize: 13 }}>{u.correo}</div>
+                <div style={{ color: C.gray400, fontSize: 12, marginTop: 2 }}>
+                  Registrado el {fmtFecha(u.created_at)}
+                </div>
+              </div>
+
+              <span style={{
+                background: u.activo ? C.greenBg : C.amberBg,
+                color: u.activo ? C.green : C.amber,
+                padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600 }}>
+                {u.activo ? "✅ Aprobado" : "⏳ Pendiente"}
+              </span>
+
+              <div style={{ display: "flex", gap: 8 }}>
+                {!u.activo && (
+                  <Btn onClick={() => cambiarEstado(u.id, true)}
+                    disabled={procesando === u.id} color={C.green}>
+                    ✅ Aprobar
+                  </Btn>
+                )}
+                {u.activo && (
+                  <Btn onClick={() => cambiarEstado(u.id, false)}
+                    disabled={procesando === u.id} outline color={C.red}>
+                    🚫 Revocar acceso
+                  </Btn>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [usuario, setUsuario] = useState(() => {
     try { return JSON.parse(localStorage.getItem("usuario")); } catch { return null; }
@@ -790,12 +905,13 @@ export default function App() {
 
   if (!usuario) return <LoginPage onLogin={(u) => setUsuario(u)} />;
 
-  const renderPage = () => {
+ const renderPage = () => {
     switch (page) {
       case "equipos":          return <EquiposPage usuario={usuario} />;
       case "mis-solicitudes":  return <SolicitudesPage usuario={usuario} />;
       case "admin":            return esAdmin ? <AdminPage usuario={usuario} /> : null;
       case "gestion-equipos":  return esAdmin ? <GestionEquiposPage usuario={usuario} /> : null;
+      case "usuarios":         return esAdmin ? <UsuariosPage usuario={usuario} /> : null;
       default:                 return <DashboardPage setPage={setPage} usuario={usuario} solicitudes={solicitudes} />;
     }
   };
